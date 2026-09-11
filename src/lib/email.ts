@@ -10,6 +10,7 @@ export async function sendAppointmentConfirmationEmail(params: {
   accountName: string;
   serviceName: string;
   startAt: Date;
+  portalUrl: string;
 }) {
   if (!resend || !process.env.EMAIL_FROM) return;
 
@@ -29,6 +30,7 @@ export async function sendAppointmentConfirmationEmail(params: {
         <li><strong>Serviço:</strong> ${params.serviceName}</li>
         <li><strong>Data/hora:</strong> ${dateLabel}</li>
       </ul>
+      <p><a href="${params.portalUrl}">Acesse aqui</a> para ver seu histórico, cancelar ou remarcar.</p>
       <p>Até breve!</p>
     `,
   });

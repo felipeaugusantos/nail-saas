@@ -56,6 +56,7 @@ export async function notifyAppointmentWhatsApp(params: {
   accountName: string;
   serviceName: string;
   startAt: Date;
+  portalUrl: string;
 }) {
   const dateLabel = params.startAt.toLocaleString("pt-BR", {
     dateStyle: "long",
@@ -64,8 +65,8 @@ export async function notifyAppointmentWhatsApp(params: {
 
   const body =
     params.type === "CONFIRMATION"
-      ? `Olá, ${params.clientName}! Seu agendamento em *${params.accountName}* foi confirmado.\n\nServiço: ${params.serviceName}\nData: ${dateLabel}\n\nAté breve! 💅`
-      : `Olá, ${params.clientName}! Passando pra lembrar do seu agendamento em *${params.accountName}* amanhã.\n\nServiço: ${params.serviceName}\nData: ${dateLabel}\n\nNos vemos em breve! 💅`;
+      ? `Olá, ${params.clientName}! Seu agendamento em *${params.accountName}* foi confirmado.\n\nServiço: ${params.serviceName}\nData: ${dateLabel}\n\nVeja seu histórico ou cancele/remarque aqui: ${params.portalUrl}\n\nAté breve! 💅`
+      : `Olá, ${params.clientName}! Passando pra lembrar do seu agendamento em *${params.accountName}* amanhã.\n\nServiço: ${params.serviceName}\nData: ${dateLabel}\n\nPrecisa cancelar ou remarcar? ${params.portalUrl}\n\nNos vemos em breve! 💅`;
 
   const result = await sendWhatsAppMessage(params.clientPhone, body);
 

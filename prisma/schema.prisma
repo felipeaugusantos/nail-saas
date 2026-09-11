@@ -55,20 +55,39 @@ model User {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String
-  email     String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  notes       String?
+  portalToken String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   appointments Appointment[]
+  anamnesis    Anamnesis?
 
   @@index([accountId])
+}
+
+// Ficha de anamnese: preenchida pela cliente no portal próprio ou pela
+// equipe no cadastro. Um registro por cliente (atualizado, não versionado).
+model Anamnesis {
+  id                       String   @id @default(cuid())
+  allergies                String?
+  skinNailConditions       String?
+  medications              String?
+  pregnantOrBreastfeeding  Boolean  @default(false)
+  diabetes                 Boolean  @default(false)
+  preferences              String?
+  notes                    String?
+  updatedAt                DateTime @updatedAt
+
+  clientId String @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model Service {

@@ -44,10 +44,14 @@ export default function BookingForm({
   slug,
   services,
   staff,
+  initialName,
+  initialPhone,
 }: {
   slug: string;
   services: Service[];
   staff: Staff[];
+  initialName?: string;
+  initialPhone?: string;
 }) {
   const days = useMemo(() => buildNextDays(14), []);
   const showStaffStep = staff.length > 1;
@@ -308,6 +312,7 @@ export default function BookingForm({
               <input
                 name="clientName"
                 required
+                defaultValue={initialName}
                 className={`mt-1.5 ${inputClass}`}
               />
             </div>
@@ -316,6 +321,7 @@ export default function BookingForm({
               <input
                 name="clientPhone"
                 required
+                defaultValue={initialPhone}
                 placeholder="(11) 91234-5678"
                 className={`mt-1.5 ${inputClass}`}
               />

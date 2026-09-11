@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyAppointmentWhatsApp } from "@/lib/whatsapp";
+import { buildPortalUrl } from "@/lib/utils";
 
 /**
  * Dispara lembretes de WhatsApp para agendamentos confirmados que
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest) {
       accountName: appointment.account.name,
       serviceName: appointment.service.name,
       startAt: appointment.startAt,
+      portalUrl: buildPortalUrl(appointment.client.portalToken),
     });
     if (result.ok) sent++;
     else failed++;

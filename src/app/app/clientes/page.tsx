@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
 import { PageHeader } from "@/components/page-header";
@@ -40,14 +41,17 @@ export default async function ClientesPage() {
             {clients.map((client) => (
               <tr key={client.id} className="hover:bg-zinc-50/60">
                 <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-3">
+                  <Link
+                    href={`/app/clientes/${client.id}`}
+                    className="flex items-center gap-3 hover:underline"
+                  >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600">
                       {client.name.slice(0, 2).toUpperCase()}
                     </div>
                     <span className="font-medium text-zinc-800">
                       {client.name}
                     </span>
-                  </div>
+                  </Link>
                 </td>
                 <td className="px-5 py-3.5 text-zinc-600">{client.phone}</td>
                 <td className="px-5 py-3.5 text-zinc-600">
@@ -57,7 +61,15 @@ export default async function ClientesPage() {
                   {client._count.appointments}
                 </td>
                 <td className="px-5 py-3.5 text-right">
-                  <ClientRowActions clientId={client.id} />
+                  <div className="flex items-center justify-end gap-4">
+                    <Link
+                      href={`/app/clientes/${client.id}`}
+                      className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                    >
+                      Ver ficha
+                    </Link>
+                    <ClientRowActions clientId={client.id} />
+                  </div>
                 </td>
               </tr>
             ))}

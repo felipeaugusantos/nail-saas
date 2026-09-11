@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
 import { notifyAppointmentWhatsApp } from "@/lib/whatsapp";
+import { buildPortalUrl } from "@/lib/utils";
 
 const bookingSchema = z.object({
   slug: z.string().min(1),
@@ -128,6 +129,7 @@ export async function createPublicAppointment(
   });
 
   if (!stripe) {
+    const portalUrl = buildPortalUrl(client.portalToken);
     if (clientEmail) {
       await sendAppointmentConfirmationEmail({
         to: clientEmail,
@@ -135,6 +137,7 @@ export async function createPublicAppointment(
         accountName: account.name,
         serviceName: service.name,
         startAt: start,
+        portalUrl,
       });
     }
     await notifyAppointmentWhatsApp({
@@ -146,6 +149,7 @@ export async function createPublicAppointment(
       accountName: account.name,
       serviceName: service.name,
       startAt: start,
+      portalUrl,
     });
     return { redirectUrl: `/agendamento/confirmado?id=${appointment.id}` };
   }

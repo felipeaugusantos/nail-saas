@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
 import { notifyAppointmentWhatsApp } from "@/lib/whatsapp";
+import { buildPortalUrl } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
         data: { status: "PAID" },
       });
 
+      const portalUrl = buildPortalUrl(appointment.client.portalToken);
+
       if (appointment.client.email) {
         await sendAppointmentConfirmationEmail({
           to: appointment.client.email,
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest) {
           accountName: appointment.account.name,
           serviceName: appointment.service.name,
           startAt: appointment.startAt,
+          portalUrl,
         });
       }
 
@@ -59,6 +63,7 @@ export async function POST(req: NextRequest) {
         accountName: appointment.account.name,
         serviceName: appointment.service.name,
         startAt: appointment.startAt,
+        portalUrl,
       });
     }
   }

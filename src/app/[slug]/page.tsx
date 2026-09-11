@@ -5,10 +5,13 @@ import BookingForm from "./booking-form";
 
 export default async function PublicBookingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ nome?: string; telefone?: string }>;
 }) {
   const { slug } = await params;
+  const { nome, telefone } = await searchParams;
 
   const account = await prisma.account.findUnique({
     where: { slug },
@@ -59,6 +62,8 @@ export default async function PublicBookingPage({
               priceLabel: formatCentsToBRL(s.priceCents),
             }))}
             staff={account.users.map((u) => ({ id: u.id, name: u.name }))}
+            initialName={nome}
+            initialPhone={telefone}
           />
         </div>
       </div>
