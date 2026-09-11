@@ -19,6 +19,7 @@ export default async function AppLayout({
         accountName={account?.name ?? "Minha conta"}
         accountSlug={account?.slug ?? ""}
         userName={session.user.name ?? "Usuário"}
+        role={session.user.role}
       />
       <div className="flex-1 overflow-x-hidden">
         <main className="mx-auto max-w-6xl px-8 py-8">{children}</main>

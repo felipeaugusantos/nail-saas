@@ -21,10 +21,17 @@ const STATUS_VARIANT: Record<
   COMPLETED: "info",
 };
 
-export default async function ListView({ accountId }: { accountId: string }) {
+export default async function ListView({
+  accountId,
+  staffId,
+}: {
+  accountId: string;
+  staffId?: string;
+}) {
   const appointments = await prisma.appointment.findMany({
     where: {
       accountId,
+      ...(staffId ? { staffId } : {}),
       startAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
     },
     orderBy: { startAt: "asc" },

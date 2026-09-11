@@ -24,6 +24,8 @@ const STATUS_VARIANT: Record<string, "warning" | "success" | "neutral" | "info">
 export default async function DashboardPage() {
   const session = await requireSession();
   const accountId = session.user.accountId;
+  const isStaff = session.user.role === "STAFF";
+  const staffFilter = isStaff ? { staffId: session.user.id } : {};
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -34,38 +36,49 @@ export default async function DashboardPage() {
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [todayCount, clientCount, monthRevenue, upcoming] = await Promise.all([
-    prisma.appointment.count({
-      where: {
-        accountId,
-        startAt: { gte: startOfToday, lte: endOfToday },
-        status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-      },
-    }),
-    prisma.client.count({ where: { accountId } }),
-    prisma.appointment.aggregate({
-      where: {
-        accountId,
-        startAt: { gte: startOfMonth },
-        status: { in: ["CONFIRMED", "COMPLETED"] },
-      },
-      _sum: { priceCents: true },
-    }),
-    prisma.appointment.findMany({
-      where: {
-        accountId,
-        startAt: { gte: new Date() },
-        status: { in: ["PENDING", "CONFIRMED"] },
-      },
-      orderBy: { startAt: "asc" },
-      take: 5,
-      include: { client: true, service: true },
-    }),
-  ]);
+  const [todayCount, clientCount, monthRevenue, monthAppointmentCount, upcoming] =
+    await Promise.all([
+      prisma.appointment.count({
+        where: {
+          accountId,
+          ...staffFilter,
+          startAt: { gte: startOfToday, lte: endOfToday },
+          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+        },
+      }),
+      prisma.client.count({ where: { accountId } }),
+      prisma.appointment.aggregate({
+        where: {
+          accountId,
+          startAt: { gte: startOfMonth },
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+        },
+        _sum: { priceCents: true },
+      }),
+      prisma.appointment.count({
+        where: {
+          accountId,
+          ...staffFilter,
+          startAt: { gte: startOfMonth },
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+        },
+      }),
+      prisma.appointment.findMany({
+        where: {
+          accountId,
+          ...staffFilter,
+          startAt: { gte: new Date() },
+          status: { in: ["PENDING", "CONFIRMED"] },
+        },
+        orderBy: { startAt: "asc" },
+        take: 5,
+        include: { client: true, service: true },
+      }),
+    ]);
 
   const stats = [
     {
-      label: "Agendamentos hoje",
+      label: isStaff ? "Meus agendamentos hoje" : "Agendamentos hoje",
       value: todayCount,
       icon: CalendarDays,
     },
@@ -74,11 +87,17 @@ export default async function DashboardPage() {
       value: clientCount,
       icon: Users,
     },
-    {
-      label: "Faturamento do mês",
-      value: formatCentsToBRL(monthRevenue._sum.priceCents ?? 0),
-      icon: Wallet,
-    },
+    isStaff
+      ? {
+          label: "Meus atendimentos no mês",
+          value: monthAppointmentCount,
+          icon: Wallet,
+        }
+      : {
+          label: "Faturamento do mês",
+          value: formatCentsToBRL(monthRevenue._sum.priceCents ?? 0),
+          icon: Wallet,
+        },
     {
       label: "Próximo horário",
       value: upcoming[0]

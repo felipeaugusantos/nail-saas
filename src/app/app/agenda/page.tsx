@@ -19,6 +19,8 @@ export default async function AgendaPage({
   const weekStart = startOfWeek(anchorDate);
   const weekParamValue = toDateOnlyString(weekStart);
 
+  const staffId = session.user.role === "STAFF" ? session.user.id : undefined;
+
   return (
     <div>
       <PageHeader
@@ -57,9 +59,13 @@ export default async function AgendaPage({
       />
 
       {view === "semana" ? (
-        <WeekView accountId={session.user.accountId} weekStart={weekStart} />
+        <WeekView
+          accountId={session.user.accountId}
+          weekStart={weekStart}
+          staffId={staffId}
+        />
       ) : (
-        <ListView accountId={session.user.accountId} />
+        <ListView accountId={session.user.accountId} staffId={staffId} />
       )}
     </div>
   );

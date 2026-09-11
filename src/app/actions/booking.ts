@@ -8,6 +8,7 @@ import { sendAppointmentConfirmationEmail } from "@/lib/email";
 const bookingSchema = z.object({
   slug: z.string().min(1),
   serviceId: z.string().min(1),
+  staffId: z.string().min(1),
   startAt: z.string().min(1),
   clientName: z.string().min(2, "Informe seu nome"),
   clientPhone: z.string().min(8, "Informe um telefone válido"),
@@ -26,6 +27,7 @@ export async function createPublicAppointment(
   const parsed = bookingSchema.safeParse({
     slug: formData.get("slug"),
     serviceId: formData.get("serviceId"),
+    staffId: formData.get("staffId"),
     startAt: formData.get("startAt"),
     clientName: formData.get("clientName"),
     clientPhone: formData.get("clientPhone"),
@@ -36,8 +38,15 @@ export async function createPublicAppointment(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
 
-  const { slug, serviceId, startAt, clientName, clientPhone, clientEmail } =
-    parsed.data;
+  const {
+    slug,
+    serviceId,
+    staffId,
+    startAt,
+    clientName,
+    clientPhone,
+    clientEmail,
+  } = parsed.data;
 
   const account = await prisma.account.findUnique({ where: { slug } });
   if (!account) return { error: "Salão não encontrado" };
@@ -46,6 +55,11 @@ export async function createPublicAppointment(
     where: { id: serviceId, accountId: account.id, active: true },
   });
   if (!service) return { error: "Serviço não encontrado" };
+
+  const staff = await prisma.user.findFirst({
+    where: { id: staffId, accountId: account.id, bookable: true, active: true },
+  });
+  if (!staff) return { error: "Profissional não encontrado" };
 
   const start = new Date(startAt);
   if (Number.isNaN(start.getTime()) || start.getTime() < Date.now()) {
@@ -56,6 +70,7 @@ export async function createPublicAppointment(
   const conflict = await prisma.appointment.findFirst({
     where: {
       accountId: account.id,
+      staffId: staff.id,
       status: { in: ["PENDING", "CONFIRMED"] },
       startAt: { lt: end },
       endAt: { gt: start },
@@ -84,6 +99,7 @@ export async function createPublicAppointment(
       accountId: account.id,
       clientId: client.id,
       serviceId: service.id,
+      staffId: staff.id,
       startAt: start,
       endAt: end,
       priceCents: service.priceCents,

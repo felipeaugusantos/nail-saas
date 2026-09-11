@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/session";
+import { requireOwner } from "@/lib/session";
 
 const serviceSchema = z.object({
   name: z.string().min(2, "Informe o nome do serviço"),
@@ -17,7 +17,7 @@ export async function createService(
   _prevState: ServiceState,
   formData: FormData
 ): Promise<ServiceState> {
-  const session = await requireSession();
+  const session = await requireOwner();
 
   const parsed = serviceSchema.safeParse({
     name: formData.get("name"),
@@ -41,7 +41,7 @@ export async function createService(
 }
 
 export async function toggleServiceActive(serviceId: string) {
-  const session = await requireSession();
+  const session = await requireOwner();
 
   const service = await prisma.service.findFirst({
     where: { id: serviceId, accountId: session.user.accountId },
@@ -57,7 +57,7 @@ export async function toggleServiceActive(serviceId: string) {
 }
 
 export async function deleteService(serviceId: string) {
-  const session = await requireSession();
+  const session = await requireOwner();
 
   await prisma.service.deleteMany({
     where: { id: serviceId, accountId: session.user.accountId },

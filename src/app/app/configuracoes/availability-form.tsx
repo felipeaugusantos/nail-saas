@@ -12,7 +12,7 @@ import { inputClass, labelClass } from "@/lib/utils";
 
 const initialState: AvailabilityState = {};
 
-export default function AvailabilityForm() {
+export default function AvailabilityForm({ userId }: { userId: string }) {
   const [state, formAction, pending] = useActionState(
     addAvailabilityRule,
     initialState
@@ -32,6 +32,7 @@ export default function AvailabilityForm() {
         action={formAction}
         className="flex flex-wrap items-end gap-4"
       >
+        <input type="hidden" name="userId" value={userId} />
         <div className="w-44">
           <label className={labelClass}>Dia da semana</label>
           <select

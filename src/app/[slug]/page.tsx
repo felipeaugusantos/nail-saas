@@ -14,6 +14,10 @@ export default async function PublicBookingPage({
     where: { slug },
     include: {
       services: { where: { active: true }, orderBy: { name: "asc" } },
+      users: {
+        where: { bookable: true, active: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -54,6 +58,7 @@ export default async function PublicBookingPage({
               durationMin: s.durationMin,
               priceLabel: formatCentsToBRL(s.priceCents),
             }))}
+            staff={account.users.map((u) => ({ id: u.id, name: u.name }))}
           />
         </div>
       </div>

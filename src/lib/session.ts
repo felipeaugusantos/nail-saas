@@ -8,3 +8,11 @@ export async function requireSession() {
   }
   return session;
 }
+
+export async function requireOwner() {
+  const session = await requireSession();
+  if (session.user.role !== "OWNER") {
+    redirect("/app");
+  }
+  return session;
+}

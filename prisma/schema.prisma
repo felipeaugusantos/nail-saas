@@ -22,6 +22,14 @@ model Account {
   availability  Availability[]
   appointments  Appointment[]
   notifications Notification[]
+  expenses      Expense[]
+  products      Product[]
+  stockMovements StockMovement[]
+}
+
+enum UserRole {
+  OWNER
+  STAFF
 }
 
 model User {
@@ -29,11 +37,19 @@ model User {
   name          String
   email         String   @unique
   passwordHash  String
+  role          UserRole @default(OWNER)
+  active        Boolean  @default(true)
+  bookable      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  availability      Availability[]
+  staffAppointments Appointment[] @relation("AppointmentStaff")
+
+  @@index([accountId])
 }
 
 model Client {
@@ -70,7 +86,8 @@ model Service {
   @@index([accountId])
 }
 
-// Regras recorrentes de disponibilidade por dia da semana (0=domingo ... 6=sábado)
+// Regras recorrentes de disponibilidade por dia da semana (0=domingo ... 6=sábado),
+// por profissional (User) reservável.
 model Availability {
   id          String   @id @default(cuid())
   weekday     Int
@@ -80,7 +97,11 @@ model Availability {
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([accountId])
+  @@index([userId])
 }
 
 enum AppointmentStatus {
@@ -109,9 +130,13 @@ model Appointment {
   serviceId String
   service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
+  staffId String?
+  staff   User?   @relation("AppointmentStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
   payment Payment?
 
   @@index([accountId, startAt])
+  @@index([staffId])
 }
 
 enum PaymentStatus {
@@ -154,4 +179,69 @@ model Notification {
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
+}
+
+enum ExpenseCategory {
+  ALUGUEL
+  PRODUTOS
+  SALARIOS
+  MARKETING
+  OUTROS
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  description String
+  amountCents Int
+  category    ExpenseCategory @default(OUTROS)
+  paidAt      DateTime
+  createdAt   DateTime        @default(now())
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, paidAt])
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  sku           String?
+  unit          String   @default("un")
+  costCents     Int      @default(0)
+  priceCents    Int      @default(0)
+  stockQty      Int      @default(0)
+  lowStockAlert Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  movements StockMovement[]
+
+  @@index([accountId])
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  type      StockMovementType
+  quantity  Int
+  reason    String?
+  createdAt DateTime          @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, productId])
 }

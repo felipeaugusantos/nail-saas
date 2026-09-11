@@ -31,17 +31,22 @@ function clamp(value: number, min: number, max: number) {
 export default async function WeekView({
   accountId,
   weekStart,
+  staffId,
 }: {
   accountId: string;
   weekStart: Date;
+  staffId?: string;
 }) {
   const weekEnd = addDays(weekStart, 7);
 
   const [rules, appointments] = await Promise.all([
-    prisma.availability.findMany({ where: { accountId } }),
+    prisma.availability.findMany({
+      where: { accountId, ...(staffId ? { userId: staffId } : {}) },
+    }),
     prisma.appointment.findMany({
       where: {
         accountId,
+        ...(staffId ? { staffId } : {}),
         status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
         startAt: { gte: weekStart, lt: weekEnd },
       },

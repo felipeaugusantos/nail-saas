@@ -1,22 +1,41 @@
+import Link from "next/link";
 import { Link2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/session";
+import { requireOwner } from "@/lib/session";
+import { cn } from "@/lib/utils";
 import { WEEKDAY_LABELS, minutesToTimeLabel } from "@/lib/availability";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AvailabilityForm from "./availability-form";
 import AvailabilityRowActions from "./availability-row-actions";
 
-export default async function ConfiguracoesPage() {
-  const session = await requireSession();
+export default async function ConfiguracoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ profissional?: string }>;
+}) {
+  const session = await requireOwner();
+  const { profissional } = await searchParams;
 
-  const [account, rules] = await Promise.all([
+  const [account, bookableUsers] = await Promise.all([
     prisma.account.findUnique({ where: { id: session.user.accountId } }),
-    prisma.availability.findMany({
-      where: { accountId: session.user.accountId },
-      orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
+    prisma.user.findMany({
+      where: { accountId: session.user.accountId, bookable: true, active: true },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
+
+  const selectedUserId =
+    bookableUsers.find((u) => u.id === profissional)?.id ??
+    bookableUsers.find((u) => u.id === session.user.id)?.id ??
+    bookableUsers[0]?.id;
+
+  const rules = selectedUserId
+    ? await prisma.availability.findMany({
+        where: { accountId: session.user.accountId, userId: selectedUserId },
+        orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
+      })
+    : [];
 
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/${account?.slug}`;
 
@@ -47,10 +66,31 @@ export default async function ConfiguracoesPage() {
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">
-          Horários de disponibilidade
-        </h2>
-        <AvailabilityForm />
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-900">
+            Horários de disponibilidade
+          </h2>
+          {bookableUsers.length > 1 && (
+            <div className="flex gap-1 rounded-lg bg-zinc-100 p-1">
+              {bookableUsers.map((u) => (
+                <Link
+                  key={u.id}
+                  href={`/app/configuracoes?profissional=${u.id}`}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium",
+                    u.id === selectedUserId
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-700"
+                  )}
+                >
+                  {u.id === session.user.id ? "Você" : u.name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {selectedUserId && <AvailabilityForm userId={selectedUserId} />}
 
         <Card className="mt-4 overflow-hidden">
           <table className="w-full text-sm">

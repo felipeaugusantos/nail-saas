@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/session";
+import { requireOwner } from "@/lib/session";
 import { formatCentsToBRL } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import ServiceForm from "./service-form";
 import ServiceRowActions from "./service-row-actions";
 
 export default async function ServicosPage() {
-  const session = await requireSession();
+  const session = await requireOwner();
 
   const services = await prisma.service.findMany({
     where: { accountId: session.user.accountId },

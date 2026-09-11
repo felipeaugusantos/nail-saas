@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { Clock, Check } from "lucide-react";
+import { Clock, Check, User as UserIcon } from "lucide-react";
 import {
   createPublicAppointment,
   type BookingState,
@@ -15,6 +15,11 @@ type Service = {
   name: string;
   durationMin: number;
   priceLabel: string;
+};
+
+type Staff = {
+  id: string;
+  name: string;
 };
 
 const initialState: BookingState = {};
@@ -38,15 +43,19 @@ function buildNextDays(count: number) {
 export default function BookingForm({
   slug,
   services,
+  staff,
 }: {
   slug: string;
   services: Service[];
+  staff: Staff[];
 }) {
   const days = useMemo(() => buildNextDays(14), []);
+  const showStaffStep = staff.length > 1;
 
   const [selectedServiceId, setSelectedServiceId] = useState(
     services[0]?.id ?? ""
   );
+  const [selectedStaffId, setSelectedStaffId] = useState(staff[0]?.id ?? "");
   const [selectedDate, setSelectedDate] = useState(days[0]?.iso ?? "");
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -58,9 +67,10 @@ export default function BookingForm({
   );
 
   const selectedService = services.find((s) => s.id === selectedServiceId);
+  const selectedStaff = staff.find((s) => s.id === selectedStaffId);
 
   useEffect(() => {
-    if (!selectedServiceId || !selectedDate) return;
+    if (!selectedServiceId || !selectedStaffId || !selectedDate) return;
 
     let cancelled = false;
 
@@ -71,7 +81,7 @@ export default function BookingForm({
         const res = await fetch(
           `/api/public/slots?slug=${encodeURIComponent(slug)}&serviceId=${encodeURIComponent(
             selectedServiceId
-          )}&date=${selectedDate}`
+          )}&staffId=${encodeURIComponent(selectedStaffId)}&date=${selectedDate}`
         );
         const data = await res.json();
         if (!cancelled) setSlots(data.slots ?? []);
@@ -85,7 +95,7 @@ export default function BookingForm({
     return () => {
       cancelled = true;
     };
-  }, [slug, selectedServiceId, selectedDate]);
+  }, [slug, selectedServiceId, selectedStaffId, selectedDate]);
 
   useEffect(() => {
     if (state.redirectUrl) {
@@ -93,7 +103,7 @@ export default function BookingForm({
     }
   }, [state.redirectUrl]);
 
-  if (services.length === 0) {
+  if (services.length === 0 || staff.length === 0) {
     return (
       <Card>
         <CardContent>
@@ -105,16 +115,55 @@ export default function BookingForm({
     );
   }
 
+  const stepOffset = showStaffStep ? 1 : 0;
+
   return (
     <form action={formAction} className="grid gap-6 lg:grid-cols-3">
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="startAt" value={selectedSlot ?? ""} />
       <input type="hidden" name="serviceId" value={selectedServiceId} />
+      <input type="hidden" name="staffId" value={selectedStaffId} />
 
       <div className="space-y-6 lg:col-span-2">
+        {showStaffStep && (
+          <Card>
+            <CardHeader>
+              <CardTitle>1. Escolha o profissional</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 sm:grid-cols-2">
+              {staff.map((s) => {
+                const isSelected = s.id === selectedStaffId;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedStaffId(s.id)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border p-3.5 text-left transition",
+                      isSelected
+                        ? "border-rose-500 bg-rose-50/60 ring-1 ring-rose-500"
+                        : "border-zinc-200 hover:border-zinc-300"
+                    )}
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600">
+                      {s.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <p className="flex-1 text-sm font-medium text-zinc-900">
+                      {s.name}
+                    </p>
+                    {isSelected && (
+                      <Check className="h-4 w-4 shrink-0 text-rose-600" />
+                    )}
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle>1. Escolha o serviço</CardTitle>
+            <CardTitle>{1 + stepOffset}. Escolha o serviço</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             {services.map((s) => {
@@ -150,7 +199,7 @@ export default function BookingForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>2. Escolha a data</CardTitle>
+            <CardTitle>{2 + stepOffset}. Escolha a data</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 overflow-x-auto pb-1">
@@ -183,7 +232,7 @@ export default function BookingForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>3. Escolha o horário</CardTitle>
+            <CardTitle>{3 + stepOffset}. Escolha o horário</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingSlots ? (
@@ -233,6 +282,12 @@ export default function BookingForm({
                 <p className="font-medium text-zinc-800">
                   {selectedService.name}
                 </p>
+                {selectedStaff && (
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
+                    <UserIcon className="h-3.5 w-3.5" />
+                    {selectedStaff.name}
+                  </p>
+                )}
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
                   <Clock className="h-3.5 w-3.5" />
                   {selectedSlot
@@ -280,7 +335,7 @@ export default function BookingForm({
 
             <Button
               type="submit"
-              disabled={pending || !selectedSlot}
+              disabled={pending || !selectedSlot || !selectedStaffId}
               className="w-full"
               size="lg"
             >

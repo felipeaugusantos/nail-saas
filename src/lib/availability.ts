@@ -16,10 +16,12 @@ function endOfDay(date: Date): Date {
 
 /**
  * Retorna os horários de início disponíveis (Date) para um dia, considerando
- * as regras de disponibilidade recorrentes e os agendamentos já existentes.
+ * as regras de disponibilidade recorrentes e os agendamentos já existentes
+ * de um profissional (staffUserId) específico.
  */
 export async function getAvailableSlots(
   accountId: string,
+  staffUserId: string,
   date: Date,
   durationMin: number
 ): Promise<Date[]> {
@@ -27,11 +29,12 @@ export async function getAvailableSlots(
 
   const [rules, appointments] = await Promise.all([
     prisma.availability.findMany({
-      where: { accountId, weekday },
+      where: { accountId, userId: staffUserId, weekday },
     }),
     prisma.appointment.findMany({
       where: {
         accountId,
+        staffId: staffUserId,
         status: { in: ["PENDING", "CONFIRMED"] },
         startAt: { gte: startOfDay(date), lte: endOfDay(date) },
       },
