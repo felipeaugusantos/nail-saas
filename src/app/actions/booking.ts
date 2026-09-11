@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
+import { notifyAppointmentWhatsApp } from "@/lib/whatsapp";
 
 const bookingSchema = z.object({
   slug: z.string().min(1),
@@ -80,6 +81,24 @@ export async function createPublicAppointment(
     return { error: "Este horário acabou de ser reservado. Escolha outro." };
   }
 
+  const dayStart = new Date(start);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  const startMinute = start.getHours() * 60 + start.getMinutes();
+  const endMinute = startMinute + service.durationMin;
+
+  const blocks = await prisma.timeBlock.findMany({
+    where: { accountId: account.id, userId: staff.id, date: { gte: dayStart, lt: dayEnd } },
+  });
+  const isBlocked = blocks.some((b) => {
+    if (b.startMinute == null || b.endMinute == null) return true;
+    return startMinute < b.endMinute && endMinute > b.startMinute;
+  });
+  if (isBlocked) {
+    return { error: "Este horário não está mais disponível. Escolha outro." };
+  }
+
   let client = await prisma.client.findFirst({
     where: { accountId: account.id, phone: clientPhone },
   });
@@ -118,6 +137,16 @@ export async function createPublicAppointment(
         startAt: start,
       });
     }
+    await notifyAppointmentWhatsApp({
+      accountId: account.id,
+      appointmentId: appointment.id,
+      type: "CONFIRMATION",
+      clientName,
+      clientPhone,
+      accountName: account.name,
+      serviceName: service.name,
+      startAt: start,
+    });
     return { redirectUrl: `/agendamento/confirmado?id=${appointment.id}` };
   }
 

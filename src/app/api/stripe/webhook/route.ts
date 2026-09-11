@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
+import { notifyAppointmentWhatsApp } from "@/lib/whatsapp";
 
 export async function POST(req: NextRequest) {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
@@ -48,6 +49,17 @@ export async function POST(req: NextRequest) {
           startAt: appointment.startAt,
         });
       }
+
+      await notifyAppointmentWhatsApp({
+        accountId: appointment.accountId,
+        appointmentId: appointment.id,
+        type: "CONFIRMATION",
+        clientName: appointment.client.name,
+        clientPhone: appointment.client.phone,
+        accountName: appointment.account.name,
+        serviceName: appointment.service.name,
+        startAt: appointment.startAt,
+      });
     }
   }
 

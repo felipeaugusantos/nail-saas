@@ -27,7 +27,7 @@ export async function getAvailableSlots(
 ): Promise<Date[]> {
   const weekday = date.getDay();
 
-  const [rules, appointments] = await Promise.all([
+  const [rules, appointments, blocks] = await Promise.all([
     prisma.availability.findMany({
       where: { accountId, userId: staffUserId, weekday },
     }),
@@ -39,6 +39,13 @@ export async function getAvailableSlots(
         startAt: { gte: startOfDay(date), lte: endOfDay(date) },
       },
       select: { startAt: true, endAt: true },
+    }),
+    prisma.timeBlock.findMany({
+      where: {
+        accountId,
+        userId: staffUserId,
+        date: { gte: startOfDay(date), lte: endOfDay(date) },
+      },
     }),
   ]);
 
@@ -53,12 +60,18 @@ export async function getAvailableSlots(
       const slotStart = new Date(date);
       slotStart.setHours(0, minute, 0, 0);
       const slotEnd = new Date(slotStart.getTime() + durationMin * 60000);
+      const slotEndMinute = minute + durationMin;
 
       const overlaps = appointments.some(
         (appt) => slotStart < appt.endAt && slotEnd > appt.startAt
       );
 
-      if (!overlaps && slotStart.getTime() > Date.now()) {
+      const isBlocked = blocks.some((b) => {
+        if (b.startMinute == null || b.endMinute == null) return true;
+        return minute < b.endMinute && slotEndMinute > b.startMinute;
+      });
+
+      if (!overlaps && !isBlocked && slotStart.getTime() > Date.now()) {
         slots.push(slotStart);
       }
     }

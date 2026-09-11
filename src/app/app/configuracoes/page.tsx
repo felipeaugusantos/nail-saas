@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AvailabilityForm from "./availability-form";
 import AvailabilityRowActions from "./availability-row-actions";
+import TimeBlockForm from "./time-block-form";
+import TimeBlockRowActions from "./time-block-row-actions";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -30,12 +32,22 @@ export default async function ConfiguracoesPage({
     bookableUsers.find((u) => u.id === session.user.id)?.id ??
     bookableUsers[0]?.id;
 
-  const rules = selectedUserId
-    ? await prisma.availability.findMany({
-        where: { accountId: session.user.accountId, userId: selectedUserId },
-        orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
-      })
-    : [];
+  const [rules, timeBlocks] = selectedUserId
+    ? await Promise.all([
+        prisma.availability.findMany({
+          where: { accountId: session.user.accountId, userId: selectedUserId },
+          orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
+        }),
+        prisma.timeBlock.findMany({
+          where: {
+            accountId: session.user.accountId,
+            userId: selectedUserId,
+            date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+          },
+          orderBy: { date: "asc" },
+        }),
+      ])
+    : [[], []];
 
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/${account?.slug}`;
 
@@ -123,6 +135,58 @@ export default async function ConfiguracoesPage({
                 <tr>
                   <td colSpan={4} className="px-5 py-10 text-center text-zinc-400">
                     Nenhum horário configurado ainda.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-zinc-900">
+          Bloqueios de agenda
+        </h2>
+        <p className="mb-3 text-sm text-zinc-500">
+          Feriados, férias ou imprevistos — bloqueie datas ou horários
+          pontuais sem mexer na disponibilidade recorrente.
+        </p>
+
+        {selectedUserId && <TimeBlockForm userId={selectedUserId} />}
+
+        <Card className="mt-4 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">
+                <th className="px-5 py-3">Data</th>
+                <th className="px-5 py-3">Período</th>
+                <th className="px-5 py-3">Motivo</th>
+                <th className="px-5 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {timeBlocks.map((block) => (
+                <tr key={block.id} className="hover:bg-zinc-50/60">
+                  <td className="px-5 py-3.5 font-medium text-zinc-800">
+                    {block.date.toLocaleDateString("pt-BR")}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-600">
+                    {block.startMinute == null || block.endMinute == null
+                      ? "Dia inteiro"
+                      : `${minutesToTimeLabel(block.startMinute)} – ${minutesToTimeLabel(block.endMinute)}`}
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-600">
+                    {block.reason ?? "-"}
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <TimeBlockRowActions blockId={block.id} />
+                  </td>
+                </tr>
+              ))}
+              {timeBlocks.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-zinc-400">
+                    Nenhum bloqueio cadastrado.
                   </td>
                 </tr>
               )}

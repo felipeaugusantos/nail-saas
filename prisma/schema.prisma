@@ -20,6 +20,7 @@ model Account {
   clients       Client[]
   services      Service[]
   availability  Availability[]
+  timeBlocks    TimeBlock[]
   appointments  Appointment[]
   notifications Notification[]
   expenses      Expense[]
@@ -48,6 +49,7 @@ model User {
 
   availability      Availability[]
   staffAppointments Appointment[] @relation("AppointmentStaff")
+  timeBlocks        TimeBlock[]
 
   @@index([accountId])
 }
@@ -104,6 +106,26 @@ model Availability {
   @@index([userId])
 }
 
+// Bloqueio pontual de agenda (feriado, férias, imprevisto) para um
+// profissional em uma data específica. startMinute/endMinute nulos =
+// bloqueia o dia inteiro.
+model TimeBlock {
+  id          String   @id @default(cuid())
+  date        DateTime
+  startMinute Int?
+  endMinute   Int?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, userId, date])
+}
+
 enum AppointmentStatus {
   PENDING
   CONFIRMED
@@ -133,7 +155,8 @@ model Appointment {
   staffId String?
   staff   User?   @relation("AppointmentStaff", fields: [staffId], references: [id], onDelete: SetNull)
 
-  payment Payment?
+  payment      Payment?
+  notifications Notification[]
 
   @@index([accountId, startAt])
   @@index([staffId])
@@ -168,9 +191,15 @@ enum NotificationStatus {
   FAILED
 }
 
+enum NotificationType {
+  CONFIRMATION
+  REMINDER
+}
+
 model Notification {
   id        String              @id @default(cuid())
   channel   NotificationChannel
+  type      NotificationType    @default(CONFIRMATION)
   status    NotificationStatus
   message   String
   createdAt DateTime            @default(now())
@@ -178,7 +207,11 @@ model Notification {
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
   @@index([accountId])
+  @@index([appointmentId, type])
 }
 
 enum ExpenseCategory {

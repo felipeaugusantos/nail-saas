@@ -39,7 +39,7 @@ export default async function WeekView({
 }) {
   const weekEnd = addDays(weekStart, 7);
 
-  const [rules, appointments] = await Promise.all([
+  const [rules, appointments, timeBlocks] = await Promise.all([
     prisma.availability.findMany({
       where: { accountId, ...(staffId ? { userId: staffId } : {}) },
     }),
@@ -52,6 +52,13 @@ export default async function WeekView({
       },
       orderBy: { startAt: "asc" },
       include: { client: true, service: true },
+    }),
+    prisma.timeBlock.findMany({
+      where: {
+        accountId,
+        ...(staffId ? { userId: staffId } : {}),
+        date: { gte: weekStart, lt: weekEnd },
+      },
     }),
   ]);
 
@@ -172,6 +179,37 @@ export default async function WeekView({
                 className="border-t border-zinc-100"
                 style={{ gridColumn: "2 / span 7", gridRow: row }}
               />
+            );
+          })}
+
+          {/* bloqueios de agenda */}
+          {timeBlocks.map((block) => {
+            const dayIndex = block.date.getDay();
+            const blockStart = block.startMinute ?? startMinute;
+            const blockEnd = block.endMinute ?? endMinute;
+            const clampedStart = clamp(blockStart, startMinute, endMinute);
+            const row = (clampedStart - startMinute) / SLOT_MINUTES + 1;
+            const maxSpan = totalSlots - (row - 1);
+            const span = clamp(
+              Math.ceil((blockEnd - blockStart) / SLOT_MINUTES),
+              1,
+              maxSpan
+            );
+
+            return (
+              <div
+                key={block.id}
+                title={block.reason ?? "Bloqueado"}
+                className="m-[2px] flex items-center justify-center overflow-hidden rounded-md px-2 py-1 text-center text-[10px] font-medium text-zinc-500"
+                style={{
+                  gridColumn: dayIndex + 2,
+                  gridRow: `${row} / span ${span}`,
+                  backgroundImage:
+                    "repeating-linear-gradient(45deg, #e4e4e7, #e4e4e7 4px, #f4f4f5 4px, #f4f4f5 8px)",
+                }}
+              >
+                {block.reason ?? "Bloqueado"}
+              </div>
             );
           })}
 
